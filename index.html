@@ -2,243 +2,362 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Spatial AI Guide - Playback Lock & Non-Interrupt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Smart Audio Guide - Universal Simulator</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #070b14; color: #f8fafc; overflow: hidden; }
-    #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
-    
-    #crosshair {
-      position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
-      transform: translate(-50%, -50%); pointer-events: none; z-index: 5;
-      border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%;
-      transition: all 0.15s ease; display: none;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
-    #crosshair.locked {
-      width: 22px; height: 22px; border-color: #facc15; background: rgba(250, 204, 21, 0.3);
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #070b14;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #f8fafc;
+      touch-action: none;
+      position: fixed;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      cursor: crosshair;
+    }
+
+    /* Màn hình khởi động chung */
+    #start-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 11, 20, 0.95);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .btn-start {
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 16px 36px;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 30px;
+      box-shadow: 0 0 25px rgba(2, 132, 199, 0.6);
+      cursor: pointer;
+      margin-top: 20px;
+      transition: transform 0.1s;
+    }
+    .btn-start:active { transform: scale(0.96); }
+
+    /* Tâm ngắm (Reticle) */
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 5;
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      transition: all 0.15s ease;
+    }
+    #crosshair.locking {
+      width: 26px;
+      height: 26px;
+      border-color: #facc15;
+      background: rgba(250, 204, 21, 0.3);
       box-shadow: 0 0 16px #eab308;
     }
     #crosshair.playing {
-      width: 28px; height: 28px; border-color: #38bdf8; background: rgba(56, 189, 248, 0.35);
-      box-shadow: 0 0 20px #0284c7; animation: pulse 1s infinite alternate;
+      width: 32px;
+      height: 32px;
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 0 20px #0284c7;
+      animation: pulse 1s infinite alternate;
     }
-    @keyframes pulse { from { transform: translate(-50%, -50%) scale(0.92); } to { transform: translate(-50%, -50%) scale(1.15); } }
-
-    .hud-panel {
-      position: absolute; top: 16px; left: 16px; width: 330px; max-height: calc(100vh - 32px);
-      background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px;
-      padding: 16px; overflow-y: auto; z-index: 10; font-size: 13px; box-shadow: 0 10px 40px rgba(0,0,0,0.7);
-    }
-    .hud-right { left: auto; right: 16px; width: 390px; }
-    
-    h2 { font-size: 14px; font-weight: 700; color: #38bdf8; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
-    .badge { font-size: 10px; background: #0284c7; color: #fff; padding: 2px 6px; border-radius: 4px; }
-    .badge-fps { background: #10b981; }
-
-    .guide-box {
-      background: #1e293b; border-left: 3px solid #38bdf8; border-radius: 4px; padding: 8px;
-      font-size: 11px; line-height: 1.5; color: #cbd5e1; margin-bottom: 12px;
-    }
-    .guide-box kbd {
-      background: #0f172a; border: 1px solid #475569; border-radius: 3px; padding: 1px 4px;
-      font-family: monospace; color: #f8fafc; font-weight: bold;
+    @keyframes pulse {
+      from { transform: translate(-50%, -50%) scale(0.95); }
+      to { transform: translate(-50%, -50%) scale(1.1); }
     }
 
-    .btn-mode {
-      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #38bdf8; font-weight: 700; font-size: 12px;
-      cursor: pointer; transition: all 0.2s; background: rgba(56, 189, 248, 0.15); color: #38bdf8; margin-bottom: 10px;
-      text-align: center;
+    /* Thanh thông báo phía trên */
+    .top-hud {
+      position: absolute;
+      top: env(safe-area-inset-top, 16px);
+      left: 16px;
+      right: 16px;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
     }
-    .btn-mode:hover { background: #38bdf8; color: #0f172a; }
-    .btn-mode.active-fps { background: #10b981; color: #022c22; border-color: #10b981; box-shadow: 0 0 14px rgba(16, 185, 129, 0.5); }
+    .hud-card {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 12px 18px;
+      pointer-events: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      flex: 1;
+      max-width: 500px;
+    }
+    .hud-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      justify-content: space-between;
+    }
+    .hud-desc {
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
 
-    .control-group { margin-bottom: 10px; }
-    .control-label { display: flex; justify-content: space-between; margin-bottom: 3px; color: #94a3b8; font-size: 11px; }
-    .control-label span.val { color: #38bdf8; font-weight: 600; font-family: monospace; }
-    input[type=range] { width: 100%; accent-color: #38bdf8; cursor: pointer; }
+    /* Bảng phím tắt dành cho Laptop/PC */
+    #desktop-guide {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #94a3b8;
+      display: none; /* Mặc định ẩn, bật lên nếu dùng chuột */
+      pointer-events: auto;
+    }
+    .key-badge {
+      display: inline-block;
+      background: #334155;
+      color: #f8fafc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-weight: bold;
+      border: 1px solid #475569;
+    }
 
+    /* Cần gạt ảo (Chỉ hiện trên điện thoại) */
+    #joystick-container {
+      position: absolute;
+      bottom: max(env(safe-area-inset-bottom, 24px), 24px);
+      left: 24px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      z-index: 20;
+      display: none;
+    }
+    #joystick-knob {
+      position: absolute;
+      top: 35px;
+      left: 35px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.85);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+      pointer-events: none;
+      transform: translate(0px, 0px);
+    }
+
+    /* Cụm nút thao tác bên phải */
+    .action-controls {
+      position: absolute;
+      bottom: max(env(safe-area-inset-bottom, 24px), 24px);
+      right: 20px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
     .btn-stop {
-      width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ef4444; font-weight: 700; font-size: 11px;
-      cursor: pointer; transition: all 0.15s; background: rgba(239, 68, 68, 0.2); color: #f87171; text-align: center;
-      margin-bottom: 8px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid #ef4444;
+      background: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
     }
-    .btn-stop:hover { background: #ef4444; color: white; }
-
     .btn-ptt {
-      width: 100%; padding: 10px; border-radius: 8px; border: none; font-weight: 700; font-size: 12px;
-      cursor: pointer; transition: all 0.15s; background: #334155; color: #cbd5e1; text-align: center;
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      background: #334155;
+      color: #f8fafc;
+      font-weight: 700;
+      font-size: 11px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
     }
-    .btn-ptt.active { background: #ef4444; color: #fff; box-shadow: 0 0 16px rgba(239, 68, 68, 0.7); transform: scale(0.98); }
-    
-    .telemetry-box {
-      background: #020617; border: 1px solid #1e293b; border-radius: 6px; padding: 8px;
-      font-family: monospace; font-size: 11px; line-height: 1.4; color: #38bdf8; margin-bottom: 8px;
-      white-space: pre-wrap; word-break: break-all;
+    .btn-ptt.active {
+      background: #ef4444;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+      transform: scale(0.95);
     }
-    .status-locked { color: #facc15; font-weight: 700; border-color: #eab308; }
-    .status-playing { color: #38bdf8; font-weight: 700; border-color: #0284c7; }
-    .status-cooldown { color: #f87171; font-weight: 600; border-color: #dc2626; }
-    .status-none { color: #64748b; }
-    
-    .btn-action {
-      background: #0284c7; color: white; border: none; padding: 7px 10px; border-radius: 6px;
-      cursor: pointer; font-size: 11px; font-weight: 600; width: 100%; margin-top: 4px;
-    }
-    .btn-action:hover { background: #0369a1; }
   </style>
 </head>
 <body>
 
+  <!-- MÀN HÌNH CHẠM BAN ĐẦU -->
+  <div id="start-overlay">
+    <h1 style="font-size: 22px; color: #38bdf8; margin-bottom: 8px;">AI Audio Guide - Di Tích Văn Miếu</h1>
+    <p id="overlay-instruct" style="font-size: 13px; color: #94a3b8; max-width: 360px; line-height: 1.6;">
+      Hệ thống tự động kích hoạt thuyết minh khi bạn tiến gần và nhìn thẳng vào cổ vật.
+    </p>
+    <button class="btn-start" id="btn-start">BẮT ĐẦU TRẢI NGHIỆM</button>
+  </div>
+
   <div id="canvas-container"></div>
   <div id="crosshair"></div>
 
-  <!-- BẢNG ĐIỀU KHIỂN BÊN TRÁI -->
-  <div class="hud-panel" id="hud-left">
-    <h2>Điều Khiển Tham Quan <span class="badge" id="mode-badge">360° ORBIT</span></h2>
-
-    <button class="btn-mode" id="btn-toggle-mode">CHUYỂN SANG GÓC NHÌN THỨ NHẤT (FPS)</button>
-    <button class="btn-stop" id="btn-stop-audio">DỪNG THUYẾT MINH NGAY (PHÍM X)</button>
-    
-    <div class="guide-box" id="guide-content">
-      <b>Cơ Chế Khóa m Thanh Độc Quyền:</b><br>
-      • Khi đang phát, <b>hệ thống khóa 100%</b>, không bị ngắt khi quay đầu nhìn vật khác.<br>
-      • Phát xong $\rightarrow$ Hồi chiêu 15s cho vật đó.<br>
-      • Phím <kbd>X</kbd>: Cắt ngang để chuyển nghe vật khác.<br>
-      • Phím <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> di chuyển.<br>
-      • Nhấp chuột vào sàn để khóa chuột FPS.
+  <!-- THANH TRẠNG THÁI HUD -->
+  <div class="top-hud">
+    <div class="hud-card">
+      <div class="hud-title">
+        <span id="poi-name">Đang tìm cổ vật...</span>
+        <span id="poi-timer" style="color: #facc15;"></span>
+      </div>
+      <div class="hud-desc" id="poi-desc">Hệ thống đang quét không gian...</div>
     </div>
 
-    <div class="control-group">
-      <div class="control-label">Tọa độ X: <span class="val" id="val-x">0.0 m</span></div>
-      <input type="range" id="input-x" min="-6" max="6" step="0.05" value="0">
-    </div>
-    
-    <div class="control-group">
-      <div class="control-label">Tọa độ Z: <span class="val" id="val-z">2.0 m</span></div>
-      <input type="range" id="input-z" min="-6" max="6" step="0.05" value="2">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">Xoay La Bàn Yaw: <span class="val" id="val-yaw">0° (Bắc)</span></div>
-      <input type="range" id="input-yaw" min="0" max="360" step="1" value="0">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">Ngước / Cúi Pitch: <span class="val" id="val-pitch">0°</span></div>
-      <input type="range" id="input-pitch" min="-45" max="45" step="1" value="0">
-    </div>
-
-    <div class="control-group" style="margin-top: 10px;">
-      <button class="btn-ptt" id="btn-ptt">GIỮ CHUỘT / SPACE ĐỂ NÓI (PTT)</button>
+    <!-- Hướng dẫn phím cho Laptop -->
+    <div id="desktop-guide">
+      <div><span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> : Di chuyển</div>
+      <div style="margin-top: 4px;"><b>Chuột</b> : Quay đầu | <span class="key-badge">X</span> : Ngắt bài | <span class="key-badge">Space</span> : Hỏi AI</div>
     </div>
   </div>
 
-  <!-- BẢNG TELEMETRY ESP32 & AI BÊN PHẢI -->
-  <div class="hud-panel hud-right" id="hud-right">
-    <h2>Trạng Thái Cổ Vật & Audio <span class="badge" style="background:#10b981">REALTIME</span></h2>
-    
-    <div style="font-size: 11px; margin-bottom: 3px; color: #94a3b8;">Trạng thái Thuyết minh & Hồi chiêu:</div>
-    <div id="target-status" class="telemetry-box status-none">Chưa khóa hiện vật nào</div>
+  <!-- CẦN GẠT ẢO CHO ĐIỆN THOẠI -->
+  <div id="joystick-container">
+    <div id="joystick-knob"></div>
+  </div>
 
-    <div style="font-size: 11px; margin-bottom: 3px; color: #94a3b8;">Chuỗi NMEA ảo (Module ATGM336H UART):</div>
-    <div class="telemetry-box" id="nmea-box">$GNRMC,...</div>
-
-    <div style="font-size: 11px; margin-bottom: 3px; color: #94a3b8;">Gói JSON WebSocket ESP32 gửi lên Server:</div>
-    <div class="telemetry-box" id="json-box" style="height: 160px; overflow-y: auto;">{}</div>
-
-    <button class="btn-action" id="btn-copy">Sao chép gói tin JSON mẫu</button>
+  <!-- NÚT THAO TÁC CẢM ỨNG & CHUỘT -->
+  <div class="action-controls">
+    <button class="btn-stop" id="btn-stop" title="Phím tắt: X">✕</button>
+    <button class="btn-ptt" id="btn-ptt" title="Phím tắt: Space">GIỮ ĐỂ<br>HỎI AI</button>
   </div>
 
   <script>
-    // --- 1. KHỞI TẠO KHÔNG GIAN 3D ---
+    // --- 1. NHẬN DIỆN THIẾT BỊ (MOBILE VS DESKTOP) ---
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const joystickContainer = document.getElementById('joystick-container');
+    const desktopGuide = document.getElementById('desktop-guide');
+    const overlayInstruct = document.getElementById('overlay-instruct');
+
+    if (isTouchDevice) {
+      joystickContainer.style.display = 'block';
+      desktopGuide.style.display = 'none';
+      overlayInstruct.innerHTML = "<b>Điện thoại:</b> Dùng ngón tay cái bên trái để đi bộ, ngón cái bên phải để quay đầu nhìn cổ vật.";
+    } else {
+      joystickContainer.style.display = 'none';
+      desktopGuide.style.display = 'block';
+      overlayInstruct.innerHTML = "<b>Laptop:</b> Nhấn để khóa chuột và quay đầu. Dùng phím <span class='key-badge'>W-A-S-D</span> để đi lại, phím <span class='key-badge'>Space</span> để nói chuyện.";
+    }
+
+    // --- 2. KHỞI TẠO THREE.JS ---
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x070b14);
-    scene.fog = new THREE.FogExp2(0x070b14, 0.035);
+    scene.fog = new THREE.FogExp2(0x070b14, 0.04);
 
-    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 80);
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
 
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.maxPolarAngle = Math.PI / 2 - 0.02;
-    controls.target.set(0, 1.2, 0);
-    camera.position.set(0, 7, 8);
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambientLight);
+    // Ánh sáng
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
     const dirLight = new THREE.DirectionalLight(0xffedd5, 0.85);
-    dirLight.position.set(6, 14, 8);
-    dirLight.castShadow = true;
+    dirLight.position.set(5, 12, 6);
     scene.add(dirLight);
 
-    const grid = new THREE.GridHelper(16, 16, 0x38bdf8, 0x1e293b);
-    grid.position.y = 0.01;
-    scene.add(grid);
-
+    // Mặt sàn
     const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(16, 16),
-      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 })
+      new THREE.PlaneGeometry(22, 22),
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 })
     );
     floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
     scene.add(floor);
+    scene.add(new THREE.GridHelper(22, 22, 0x38bdf8, 0x0f172a));
 
-    const axesHelper = new THREE.AxesHelper(2);
-    scene.add(axesHelper);
-
-    // --- 2. DỰNG KIẾN TRÚC GIAN ĐÌNH & CỔ VẬT ---
-    const woodMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.7 });
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.5 });
-    
+    // Cột đình & Mái ngói
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
     [[-3.5, -4], [3.5, -4], [-3.5, 0], [3.5, 0]].forEach(([px, pz]) => {
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 4, 16), woodMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 4, 12), woodMat);
       pillar.position.set(px, 2, pz);
-      pillar.castShadow = true;
       scene.add(pillar);
     });
-
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.6, 1.8, 4), roofMat);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.6, 1.8, 4), new THREE.MeshStandardMaterial({ color: 0x991b1b }));
     roof.position.set(0, 4.9, -2);
     roof.rotation.y = Math.PI / 4;
     scene.add(roof);
 
-    // Cổ vật 1: Bia Tiến Sĩ trên Rùa đá
+    // --- 3. CỔ VẬT TRONG KHÔNG GIAN ---
+    // Bia Tiến Sĩ
     const steleGroup = new THREE.Group();
-    const turtleBody = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.35, 16), new THREE.MeshStandardMaterial({ color: 0x475569 }));
-    turtleBody.position.y = 0.18;
-    const turtleHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), new THREE.MeshStandardMaterial({ color: 0x475569 }));
-    turtleHead.position.set(0, 0.25, 0.75);
-    const tabletMesh = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x64748b }));
-    tabletMesh.position.set(0, 1.1, 0);
-    steleGroup.add(turtleBody, turtleHead, tabletMesh);
+    const turtle = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.35, 12), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+    turtle.position.y = 0.18;
+    const tablet = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x64748b }));
+    tablet.position.set(0, 1.1, 0);
+    steleGroup.add(turtle, tablet);
     steleGroup.position.set(0, 0, -3.8);
     scene.add(steleGroup);
 
-    // Cổ vật 2: Lư Hương Đồng Tam Khí
-    const burnerMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.25, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8 }));
-    burnerMesh.position.set(-2.8, 0.5, -1.5);
-    scene.add(burnerMesh);
+    // Lư Hương Đồng
+    const burner = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.25, 0.8, 12), new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.7 }));
+    burner.position.set(-2.8, 0.5, -1.5);
+    scene.add(burner);
 
-    // Cổ vật 3: Hoành Phi Sơn Son
-    const plaqueMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.7, 0.1), new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.3 }));
-    plaqueMesh.position.set(0, 3.6, -3.9);
-    scene.add(plaqueMesh);
+    // Hoành Phi
+    const plaque = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.7, 0.1), new THREE.MeshStandardMaterial({ color: 0xb91c1c }));
+    plaque.position.set(0, 3.6, -3.9);
+    scene.add(plaque);
 
     const artifacts = [
       { 
         id: "POI_BIA_01", 
         name: "Bia Tiến Sĩ Cổ Triều Lê", 
         pos: new THREE.Vector3(0, 1.1, -3.8), 
-        mesh: tabletMesh, 
+        mesh: tablet, 
         audioSrc: "audio/bia_tien_si.mp3", 
         audioText: "Bia Tiến Sĩ dựng năm 1484, ghi danh các bậc hiền tài đỗ đại khoa thời vua Lê Thánh Tông." 
       },
@@ -246,421 +365,295 @@
         id: "POI_LU_HUONG", 
         name: "Lư Hương Đồng Tam Khí", 
         pos: new THREE.Vector3(-2.8, 0.6, -1.5), 
-        mesh: burnerMesh, 
-        audioSrc: "audio/lu_huong.mp3", 
-        audioText: "Lư hương đồng đúc thủ công tam khí, chạm khắc hoa văn lưỡng long chầu nguyệt tinh xảo." 
+        mesh: burner, 
+        audioSrc: "audio/luu_huong.mp3", 
+        audioText: "Lư hương đồng đúc thủ công tam khí thời Hậu Lê, khảm hoa văn lưỡng long chầu nguyệt tinh xảo." 
       },
       { 
         id: "POI_HOANH_PHI", 
         name: "Hoành Phi 'Vạn Thế Sư Biểu'", 
         pos: new THREE.Vector3(0, 3.6, -3.9), 
-        mesh: plaqueMesh, 
+        mesh: plaque, 
         audioSrc: "audio/hoanh_phi.mp3", 
-        audioText: "Bức hoành phi sơn son thếp vàng ca tụng công đức người thầy tiêu biểu của muôn đời." 
+        audioText: "Bức hoành phi sơn son thếp vàng ca ngợi công đức người thầy tiêu biểu của muôn đời." 
       }
     ];
     artifacts.forEach(a => { a.origColor = a.mesh.material.color.getHex(); });
 
-    // --- 3. DU KHÁCH VÀ SIGHT CONE ---
-    const visitorGroup = new THREE.Group();
-    scene.add(visitorGroup);
-
-    const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 1.2), new THREE.MeshStandardMaterial({ color: 0x38bdf8 }));
-    bodyMesh.position.y = 0.6;
-    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfde047 }));
-    headMesh.position.y = 1.35;
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.15, 8), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
-    nose.rotation.x = -Math.PI / 2;
-    nose.position.set(0, 1.35, -0.2);
-    visitorGroup.add(bodyMesh, headMesh, nose);
-
-    const coneRadius = 4 * Math.tan(THREE.MathUtils.degToRad(22.5));
-    const coneGeo = new THREE.ConeGeometry(coneRadius, 4, 16, 1, true);
-    coneGeo.translate(0, -2, 0);
-    coneGeo.rotateX(Math.PI / 2);
-    const sightCone = new THREE.Mesh(
-      coneGeo,
-      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.2, wireframe: true })
-    );
-    sightCone.position.y = 1.6;
-    visitorGroup.add(sightCone);
-
-    // --- 4. HỆ THỐNG PLAYBACK LOCK, DWELL TIME & COOLDOWN ---
-    let isFPS = false;
-    let isPointerLocked = false;
+    // --- 4. BIẾN ĐIỀU KHIỂN & MÁY TRẠNG THÁI ---
     let posX = 0, posZ = 2, posY = 1.6;
     let yaw = 0, pitch = 0;
-    let pttActive = false;
-    const keys = {};
-
-    // BIẾN QUẢN LÝ KHÓA ĐỘC QUYỀN
     let isAudioPlaying = false;
-    let currentPlayingArtifact = null; // Vật phẩm ĐANG ĐƯỢC PHÁT vào tai
-    let currentLockedArtifact = null;  // Vật phẩm ĐANG ĐƯỢC NGẮM đếm 1.5s
+    let currentPlaying = null;
+    let currentLocking = null;
     let lockStartTime = 0;
-    let currentAudioPlayer = null;
+    let currentAudio = null;
     const cooldownMap = {};
 
+    const poiNameEl = document.getElementById('poi-name');
+    const poiTimerEl = document.getElementById('poi-timer');
+    const poiDescEl = document.getElementById('poi-desc');
     const crosshairEl = document.getElementById('crosshair');
-    const modeBadge = document.getElementById('mode-badge');
-    const btnToggleMode = document.getElementById('btn-toggle-mode');
-    const guideContent = document.getElementById('guide-content');
 
-    // Hàm Dừng Phát m Thanh Ngay Lập Tức
-    function stopAudioNarration() {
+    // Hàm Dừng m Thanh
+    function stopNarration() {
       if (!isAudioPlaying) return;
-      console.log("[STOP AUDIO] Du khách chủ động ngắt âm thanh.");
+      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      if (currentPlaying) cooldownMap[currentPlaying.id] = Date.now() + 15000;
       
-      if (currentAudioPlayer) {
-        currentAudioPlayer.pause();
-        currentAudioPlayer = null;
-      }
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-      if (currentPlayingArtifact) {
-        // Vào hồi chiêu ngay khi ngắt
-        cooldownMap[currentPlayingArtifact.id] = Date.now() + 15000;
-      }
-
       isAudioPlaying = false;
-      currentPlayingArtifact = null;
-      currentLockedArtifact = null;
+      currentPlaying = null;
+      currentLocking = null;
       lockStartTime = Date.now();
-      updateCalculations();
+      updateLogic();
     }
+    document.getElementById('btn-stop').addEventListener('click', stopNarration);
 
-    document.getElementById('btn-stop-audio').addEventListener('click', stopAudioNarration);
-
-    // Hàm Kích Hoạt Phát Thuyết Minh Có Khóa Độc Quyền
-    function triggerAudioNarration(item) {
+    // Hàm Kích Hoạt m Thanh
+    function playNarration(item) {
       isAudioPlaying = true;
-      currentPlayingArtifact = item; // KHÓA ĐỘC QUYỀN VẬT NÀY
-      console.log(`[AUDIO START] Đang khóa phát cho: ${item.name}`);
+      currentPlaying = item;
 
-      if (currentAudioPlayer) {
-        currentAudioPlayer.pause();
-        currentAudioPlayer = null;
-      }
+      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
 
-      const onAudioFinished = () => {
-        console.log(`[AUDIO END] Đã phát xong: ${item.name}. Hồi chiêu 15s.`);
+      const onFinished = () => {
         isAudioPlaying = false;
-        currentPlayingArtifact = null;
-        currentAudioPlayer = null;
-        cooldownMap[item.id] = Date.now() + 15000; // 15s hồi chiêu
+        currentPlaying = null;
+        currentAudio = null;
+        cooldownMap[item.id] = Date.now() + 15000;
         lockStartTime = Date.now();
-        updateCalculations();
+        updateLogic();
       };
 
-      currentAudioPlayer = new Audio(item.audioSrc);
-      currentAudioPlayer.addEventListener('ended', onAudioFinished);
-
-      currentAudioPlayer.play().catch(err => {
-        console.warn(`[CHƯA CÓ FILE] '${item.audioSrc}'. Dùng Web Speech API.`);
+      currentAudio = new Audio(item.audioSrc);
+      currentAudio.addEventListener('ended', onFinished);
+      currentAudio.play().catch(err => {
         if ('speechSynthesis' in window) {
           window.speechSynthesis.cancel();
           const utter = new SpeechSynthesisUtterance(item.audioText);
           utter.lang = 'vi-VN';
           utter.rate = 0.95;
-          
-          // Giữ tham chiếu toàn cục chống bị Chrome Garbage Collection thu hồi sớm
           window.activeUtterance = utter;
-          
-          utter.onend = () => {
-            window.activeUtterance = null;
-            onAudioFinished();
-          };
-          utter.onerror = () => {
-            window.activeUtterance = null;
-            onAudioFinished();
-          };
+          utter.onend = onFinished;
+          utter.onerror = onFinished;
           window.speechSynthesis.speak(utter);
         } else {
-          setTimeout(onAudioFinished, 5000);
+          setTimeout(onFinished, 5000);
         }
       });
     }
 
-    // --- 5. TÍNH TOÁN VECTOR TẦM NHÌN & STATE MACHINE ---
-    function updateCalculations() {
-      visitorGroup.position.set(posX, 0, posZ);
-      sightCone.position.y = posY;
-
+    // --- 5. TÍNH TOÁN KHÔNG GIAN VÀ LOGIC ---
+    function updateLogic() {
       const yawRad = THREE.MathUtils.degToRad(yaw);
       const pitchRad = THREE.MathUtils.degToRad(pitch);
-      
-      visitorGroup.rotation.y = -yawRad;
-      sightCone.rotation.x = pitchRad;
 
-      // Vector hướng nhìn chuẩn la bàn (Yaw 0 = Bắc -Z)
       const lookDir = new THREE.Vector3(
         Math.sin(yawRad) * Math.cos(pitchRad),
         Math.sin(pitchRad),
         -Math.cos(yawRad) * Math.cos(pitchRad)
       ).normalize();
 
-      if (isFPS) {
-        camera.position.set(posX, posY, posZ);
-        camera.lookAt(
-          posX + lookDir.x,
-          posY + lookDir.y,
-          posZ + lookDir.z
-        );
-      }
+      camera.position.set(posX, posY, posZ);
+      camera.lookAt(posX + lookDir.x, posY + lookDir.y, posZ + lookDir.z);
 
       const eyePos = new THREE.Vector3(posX, posY, posZ);
-      let detectedItem = null;
+      let detected = null;
 
-      // Quét va chạm hình nón
+      // Quét hình nón FOV (cự ly 4.2m, góc 45 độ)
       artifacts.forEach(item => {
         const toTarget = new THREE.Vector3().subVectors(item.pos, eyePos);
         const dist = toTarget.length();
         const angle = THREE.MathUtils.radToDeg(lookDir.angleTo(toTarget));
 
         if (dist <= 4.2 && angle <= 22.5) {
-          detectedItem = item;
+          detected = item;
           item.mesh.material.color.setHex(0x4ade80);
         } else {
           item.mesh.material.color.setHex(item.origColor);
         }
       });
 
-      // MÁY TRẠNG THÁI: PLAYBACK LOCK & COOLDOWN
       const now = Date.now();
-      let audioStatusText = "Chưa khóa hiện vật nào";
-      let audioStatusClass = "telemetry-box status-none";
 
-      // 1. NẾU ĐANG PHÁT ÂM THANH: KHÓA 100%, KHÔNG CHO ĐẾM GIỜ BẤT KỲ VẬT NÀO KHÁC
-      if (isAudioPlaying && currentPlayingArtifact) {
-        let extraNotice = "";
-        if (detectedItem && detectedItem.id !== currentPlayingArtifact.id) {
-          extraNotice = `\n(Đang nhìn: ${detectedItem.name} - Không ngắt bài cũ. Nhấn X để đổi)`;
-        }
-        audioStatusText = `[ĐANG PHÁT] ${currentPlayingArtifact.name}\n-> Đang thuyết minh vào tai nghe.${extraNotice}`;
-        audioStatusClass = "telemetry-box status-playing";
-        
-        // Reset bộ đếm ngắm vật mới
-        currentLockedArtifact = null;
-        lockStartTime = now;
+      // MÁY TRẠNG THÁI
+      if (isAudioPlaying && currentPlaying) {
+        poiNameEl.innerText = `🔊 ĐANG PHÁT: ${currentPlaying.name}`;
+        poiNameEl.style.color = "#38bdf8";
+        poiTimerEl.innerText = "";
+        poiDescEl.innerText = isTouchDevice ? "Đang nghe thuyết minh. Bấm nút [✕] để ngắt bài." : "Đang nghe thuyết minh. Nhấn phím [X] để ngắt bài.";
+        crosshairEl.className = 'playing';
+        currentLocking = null;
       } 
-      // 2. NẾU KHÔNG CÓ BÀI NÀO ĐANG PHÁT: BẮT ĐẦU XÉT VẬT THỂ TRƯỚC MẮT
-      else if (detectedItem) {
-        const remainingCooldown = Math.max(0, (cooldownMap[detectedItem.id] || 0) - now);
-
-        if (remainingCooldown > 0) {
-          const secLeft = (remainingCooldown / 1000).toFixed(1);
-          audioStatusText = `[HỒI CHIÊU] ${detectedItem.name}\n-> Vừa nghe xong. Chờ ${secLeft}s nữa mới đọc lại`;
-          audioStatusClass = "telemetry-box status-cooldown";
+      else if (detected) {
+        const cdLeft = Math.max(0, (cooldownMap[detected.id] || 0) - now);
+        if (cdLeft > 0) {
+          poiNameEl.innerText = `⏳ HỒI CHIÊU: ${detected.name}`;
+          poiNameEl.style.color = "#f87171";
+          poiTimerEl.innerText = `${(cdLeft / 1000).toFixed(0)}s`;
+          poiDescEl.innerText = "Cổ vật vừa nghe xong. Vui lòng tham quan hiện vật khác.";
+          crosshairEl.className = '';
           lockStartTime = now;
         } else {
-          // Bắt đầu đếm thời gian ngắm 1.5s
-          if (currentLockedArtifact !== detectedItem) {
-            currentLockedArtifact = detectedItem;
+          if (currentLocking !== detected) {
+            currentLocking = detected;
             lockStartTime = now;
           }
-
-          const dwellTimeSec = (now - lockStartTime) / 1000;
-          if (dwellTimeSec < 1.5) {
-            const waitTime = (1.5 - dwellTimeSec).toFixed(1);
-            audioStatusText = `[ĐANG NGẮM] ${detectedItem.name}\n-> Giữ nhìn thẳng thêm: ${waitTime}s để nghe...`;
-            audioStatusClass = "telemetry-box status-locked";
+          const dwell = (now - lockStartTime) / 1000;
+          if (dwell < 1.5) {
+            poiNameEl.innerText = `🎯 ĐANG NGẮM: ${detected.name}`;
+            poiNameEl.style.color = "#facc15";
+            poiTimerEl.innerText = `${(1.5 - dwell).toFixed(1)}s`;
+            poiDescEl.innerText = "Giữ nhìn thẳng để kích hoạt thuyết minh...";
+            crosshairEl.className = 'locking';
           } else {
-            // ĐỦ 1.5S -> KÍCH HOẠT VÀ KHÓA HỆ THỐNG
-            triggerAudioNarration(detectedItem);
+            playNarration(detected);
           }
         }
       } else {
-        currentLockedArtifact = null;
+        currentLocking = null;
         lockStartTime = now;
+        if (!isAudioPlaying) {
+          poiNameEl.innerText = "Đang tìm cổ vật...";
+          poiNameEl.style.color = "#94a3b8";
+          poiTimerEl.innerText = "";
+          poiDescEl.innerText = `Vị trí: (${posX.toFixed(1)}, ${posZ.toFixed(1)}) | Góc la bàn: ${Math.round(yaw)}°`;
+          crosshairEl.className = '';
+        }
       }
-
-      // Cập nhật tâm ngắm
-      if (crosshairEl) {
-        crosshairEl.className = '';
-        if (isAudioPlaying) crosshairEl.classList.add('playing');
-        else if (detectedItem) crosshairEl.classList.add('locked');
-      }
-
-      const lat = 21.028500 + (-posZ * 0.000009);
-      const lon = 105.854200 + (posX * 0.0000095);
-      const distToCenter = Math.sqrt(posX*posX + posZ*posZ);
-      const rssi = Math.round(-59 - (10 * 2.2 * Math.log10(Math.max(1, distToCenter))));
-
-      renderTelemetry(posX, posZ, yaw, pitch, lat, lon, rssi, audioStatusText, audioStatusClass, currentPlayingArtifact || detectedItem);
     }
 
-    function renderTelemetry(x, z, yawVal, pitchVal, lat, lon, rssi, statusText, statusClass, activePOI) {
-      document.getElementById('val-x').innerText = x.toFixed(2) + ' m';
-      document.getElementById('val-z').innerText = z.toFixed(2) + ' m';
-      document.getElementById('val-yaw').innerText = Math.round(yawVal) + '°';
-      document.getElementById('val-pitch').innerText = Math.round(pitchVal) + '°';
-      document.getElementById('input-x').value = x;
-      document.getElementById('input-z').value = z;
-      document.getElementById('input-yaw').value = yawVal;
-      document.getElementById('input-pitch').value = pitchVal;
+    // --- 6. HỆ THỐNG ĐIỀU KHIỂN KÉP (KEYBOARD/MOUSE + TOUCH) ---
+    // A. Phím bấm Laptop (W-A-S-D, Space, X)
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (e.code === 'KeyX') stopNarration();
+      if (e.code === 'Space' && !e.repeat) {
+        setPTTState(true);
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+      if (e.code === 'Space') {
+        setPTTState(false);
+      }
+    });
 
-      const targetBox = document.getElementById('target-status');
-      targetBox.className = statusClass;
-      targetBox.innerText = statusText;
-
-      const latDeg = Math.floor(lat);
-      const latMin = ((lat - latDeg) * 60).toFixed(4);
-      const lonDeg = Math.floor(lon);
-      const lonMin = ((lon - lonDeg) * 60).toFixed(4);
-      document.getElementById('nmea-box').innerText = `$GNRMC,083559.00,A,${latDeg}${latMin},N,${lonDeg}${lonMin},E,0.02,${yawVal.toFixed(1)},080926,,,A*5A`;
-
-      const payload = {
-        device_id: "ESP32_HEADSET_01",
-        timestamp: Date.now(),
-        sensors: {
-          gps: { lat: parseFloat(lat.toFixed(6)), lon: parseFloat(lon.toFixed(6)) },
-          compass: { yaw: Math.round(yawVal), pitch: Math.round(pitchVal) },
-          ble_beacon: { zone: "GIAN_CHINH_DIEN", rssi: rssi }
-        },
-        playback_state: {
-          is_playing: isAudioPlaying,
-          playing_artifact: currentPlayingArtifact ? currentPlayingArtifact.id : null,
-          playback_locked: isAudioPlaying
-        },
-        ptt_button: pttActive ? "HOLD_RECORDING" : "RELEASED"
-      };
-      document.getElementById('json-box').innerText = JSON.stringify(payload, null, 2);
-    }
-
-    // --- 6. CHẾ ĐỘ FPS & DI CHUỘT ---
-    function setFirstPersonMode(enable) {
-      isFPS = enable;
-      if (isFPS) {
-        controls.enabled = false;
-        bodyMesh.visible = false;
-        headMesh.visible = false;
-        nose.visible = false;
-        sightCone.material.opacity = 0.08;
-        crosshairEl.style.display = 'block';
-        modeBadge.innerText = "GÓC NHÌN THỨ 1 (FPS)";
-        modeBadge.className = "badge badge-fps";
-        btnToggleMode.innerText = "CHUYỂN VỀ GÓC NHÌN 360° BAO QUÁT";
-        btnToggleMode.classList.add('active-fps');
+    // B. Chuột Laptop (Khóa chuột Pointer Lock để quay đầu)
+    let isPointerLocked = false;
+    container.addEventListener('click', () => {
+      if (!isTouchDevice && !isPointerLocked) {
         container.requestPointerLock();
-      } else {
-        if (document.exitPointerLock) document.exitPointerLock();
-        controls.enabled = true;
-        bodyMesh.visible = true;
-        headMesh.visible = true;
-        nose.visible = true;
-        sightCone.material.opacity = 0.2;
-        crosshairEl.style.display = 'none';
-        modeBadge.innerText = "360° ORBIT";
-        modeBadge.className = "badge";
-        btnToggleMode.innerText = "CHUYỂN SANG GÓC NHÌN THỨ NHẤT (FPS)";
-        btnToggleMode.classList.remove('active-fps');
-        camera.position.set(posX, 7, posZ + 6);
-        controls.target.set(posX, 1.2, posZ);
       }
-      updateCalculations();
-    }
-
-    btnToggleMode.addEventListener('click', () => setFirstPersonMode(!isFPS));
-
+    });
     document.addEventListener('pointerlockchange', () => {
       isPointerLocked = (document.pointerLockElement === container);
     });
-
-    container.addEventListener('click', () => {
-      if (isFPS && !isPointerLocked) container.requestPointerLock();
-    });
-
-    // Lia chuột: Di sang trái -> quay trái, Di sang phải -> quay phải
-    window.addEventListener('mousemove', (e) => {
-      if (!isFPS || !isPointerLocked) return;
-      const sensitivity = 0.12;
-      yaw = (yaw + e.movementX * sensitivity + 360) % 360;
-      pitch = Math.max(-45, Math.min(45, pitch - e.movementY * sensitivity));
-      updateCalculations();
-    });
-
-    // --- 7. BẮT PHÍM WASD & PHÍM X (NGẮT ÂM) ---
-    window.addEventListener('keydown', (e) => {
-      keys[e.key.toLowerCase()] = true;
-      if (e.code === 'Space' && !pttActive) {
-        e.preventDefault();
-        setPTT(true);
-      }
-      // Phím X: Dừng âm thanh khẩn cấp
-      if (e.key === 'x' || e.key === 'X') {
-        stopAudioNarration();
+    document.addEventListener('mousemove', (e) => {
+      if (isPointerLocked) {
+        yaw = (yaw + e.movementX * 0.2 + 360) % 360;
+        pitch = Math.max(-45, Math.min(45, pitch - e.movementY * 0.2));
+        updateLogic();
       }
     });
 
-    window.addEventListener('keyup', (e) => {
-      keys[e.key.toLowerCase()] = false;
-      if (e.code === 'Space') setPTT(false);
-    });
+    // C. Cảm ứng Điện thoại (Joystick & Vuốt màn hình)
+    let joyMove = { x: 0, z: 0 };
+    let joyTouchId = null;
+    let joyCenter = { x: 0, y: 0 };
+    const joyKnob = document.getElementById('joystick-knob');
 
-    function handleMovement() {
-      const speed = 0.055;
-      const rotSpeed = 1.4;
-      let moved = false;
-
-      if (keys['q']) { yaw = (yaw - rotSpeed + 360) % 360; moved = true; }
-      if (keys['e']) { yaw = (yaw + rotSpeed) % 360; moved = true; }
-
-      const yawRad = THREE.MathUtils.degToRad(yaw);
-      const forward = new THREE.Vector3(Math.sin(yawRad), 0, -Math.cos(yawRad));
-      const right = new THREE.Vector3(Math.cos(yawRad), 0, Math.sin(yawRad));
-
-      let moveVec = new THREE.Vector3(0, 0, 0);
-
-      if (isFPS) {
-        if (keys['w'] || keys['arrowup'])    moveVec.add(forward);
-        if (keys['s'] || keys['arrowdown'])  moveVec.sub(forward);
-        if (keys['d'] || keys['arrowright']) moveVec.add(right);
-        if (keys['a'] || keys['arrowleft'])  moveVec.sub(right);
-      } else {
-        if (keys['w'] || keys['arrowup'])    moveVec.z -= 1;
-        if (keys['s'] || keys['arrowdown'])  moveVec.z += 1;
-        if (keys['d'] || keys['arrowright']) moveVec.x += 1;
-        if (keys['a'] || keys['arrowleft'])  moveVec.x -= 1;
+    window.addEventListener('touchstart', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.clientX < window.innerWidth * 0.45 && joyTouchId === null) {
+          joyTouchId = touch.identifier;
+          const rect = joystickContainer.getBoundingClientRect();
+          joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+          handleJoy(touch.clientX, touch.clientY);
+        } else if (touch.clientX >= window.innerWidth * 0.45) {
+          touch.lastX = touch.clientX;
+          touch.lastY = touch.clientY;
+        }
       }
+    }, { passive: false });
 
-      if (moveVec.lengthSq() > 0) {
-        moveVec.normalize().multiplyScalar(speed);
-        posX += moveVec.x;
-        posZ += moveVec.z;
-        posX = Math.max(-6, Math.min(6, posX));
-        posZ = Math.max(-6, Math.min(6, posZ));
-        moved = true;
+    window.addEventListener('touchmove', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === joyTouchId) {
+          handleJoy(touch.clientX, touch.clientY);
+        } else if (touch.clientX >= window.innerWidth * 0.45) {
+          if (touch.lastX !== undefined) {
+            const dx = touch.clientX - touch.lastX;
+            const dy = touch.clientY - touch.lastY;
+            yaw = (yaw + dx * 0.35 + 360) % 360;
+            pitch = Math.max(-45, Math.min(45, pitch - dy * 0.3));
+            updateLogic();
+          }
+          touch.lastX = touch.clientX;
+          touch.lastY = touch.clientY;
+        }
       }
+    }, { passive: false });
 
-      updateCalculations();
+    function handleJoy(clientX, clientY) {
+      const maxR = 40;
+      let dx = clientX - joyCenter.x;
+      let dy = clientY - joyCenter.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > maxR) {
+        dx = (dx / dist) * maxR;
+        dy = (dy / dist) * maxR;
+      }
+      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      joyMove = { x: dx / maxR, z: dy / maxR };
     }
 
-    document.getElementById('input-x').addEventListener('input', (e) => { posX = parseFloat(e.target.value); updateCalculations(); });
-    document.getElementById('input-z').addEventListener('input', (e) => { posZ = parseFloat(e.target.value); updateCalculations(); });
-    document.getElementById('input-yaw').addEventListener('input', (e) => { yaw = parseFloat(e.target.value); updateCalculations(); });
-    document.getElementById('input-pitch').addEventListener('input', (e) => { pitch = parseFloat(e.target.value); updateCalculations(); });
-
-    const pttBtn = document.getElementById('btn-ptt');
-    function setPTT(state) {
-      pttActive = state;
-      if (state) {
-        pttBtn.classList.add('active');
-        pttBtn.innerText = "ĐANG THU ÂM (PTT ACTIVE)...";
-        // Khi du khách bấm nút hỏi AI, tự động tạm dừng âm thanh thuyết minh
-        if (isAudioPlaying) stopAudioNarration();
-      } else {
-        pttBtn.classList.remove('active');
-        pttBtn.innerText = "GIỮ CHUỘT / SPACE ĐỂ NÓI (PTT)";
+    function releaseJoy(e) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          joyKnob.style.transform = 'translate(0px, 0px)';
+          joyMove = { x: 0, z: 0 };
+          joyTouchId = null;
+        }
       }
-      updateCalculations();
     }
-    pttBtn.addEventListener('mousedown', () => setPTT(true));
-    window.addEventListener('mouseup', () => { if (pttActive) setPTT(false); });
+    window.addEventListener('touchend', releaseJoy);
+    window.addEventListener('touchcancel', releaseJoy);
 
-    document.getElementById('btn-copy').addEventListener('click', () => {
-      navigator.clipboard.writeText(document.getElementById('json-box').innerText);
-      alert("Đã sao chép gói tin JSON vào bộ nhớ đệm!");
+    // D. Nút bấm PTT (Hỗ trợ cả chuột lẫn cảm ứng)
+    const btnPTT = document.getElementById('btn-ptt');
+    function setPTTState(active) {
+      if (active) {
+        btnPTT.classList.add('active');
+        btnPTT.innerHTML = "ĐANG<br>THU ÂM";
+        if (isAudioPlaying) stopNarration();
+      } else {
+        btnPTT.classList.remove('active');
+        btnPTT.innerHTML = isTouchDevice ? "GIỮ ĐỂ<br>HỎI AI" : "GIỮ ĐỂ<br>HỎI AI<br><small>[Space]</small>";
+      }
+    }
+
+    btnPTT.addEventListener('mousedown', () => setPTTState(true));
+    window.addEventListener('mouseup', () => setPTTState(false));
+    btnPTT.addEventListener('touchstart', (e) => { e.preventDefault(); setPTTState(true); });
+    btnPTT.addEventListener('touchend', (e) => { e.preventDefault(); setPTTState(false); });
+
+    // Khởi động
+    document.getElementById('btn-start').addEventListener('click', () => {
+      document.getElementById('start-overlay').style.display = 'none';
+      const silentAudio = new Audio();
+      silentAudio.play().catch(() => {});
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+      }
+      if (!isTouchDevice) {
+        container.requestPointerLock();
+      }
+      updateLogic();
     });
 
     window.addEventListener('resize', () => {
@@ -669,13 +662,38 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
+    // --- 7. VÒNG LẶP RENDER (TỔNG HỢP CẢ 2 NGUỒN ĐIỀU KHIỂN) ---
     function animate() {
       requestAnimationFrame(animate);
-      handleMovement();
-      if (!isFPS) controls.update();
+
+      const speed = 0.06;
+      const yawRad = THREE.MathUtils.degToRad(yaw);
+      const forward = new THREE.Vector3(Math.sin(yawRad), 0, -Math.cos(yawRad));
+      const right = new THREE.Vector3(Math.cos(yawRad), 0, Math.sin(yawRad));
+      let moveDir = new THREE.Vector3();
+
+      // 1. Nhận lệnh từ bàn phím Laptop
+      if (keys['KeyW'] || keys['ArrowUp']) moveDir.add(forward);
+      if (keys['KeyS'] || keys['ArrowDown']) moveDir.sub(forward);
+      if (keys['KeyD'] || keys['ArrowRight']) moveDir.add(right);
+      if (keys['KeyA'] || keys['ArrowLeft']) moveDir.sub(right);
+
+      // 2. Nhận lệnh từ cần gạt điện thoại
+      if (Math.abs(joyMove.x) > 0.05 || Math.abs(joyMove.z) > 0.05) {
+        moveDir.addScaledVector(forward, -joyMove.z);
+        moveDir.addScaledVector(right, joyMove.x);
+      }
+
+      // Di chuyển nếu có bất kỳ nguồn nào tác động
+      if (moveDir.lengthSq() > 0) {
+        moveDir.normalize();
+        posX = Math.max(-6, Math.min(6, posX + moveDir.x * speed));
+        posZ = Math.max(-6, Math.min(6, posZ + moveDir.z * speed));
+      }
+
+      updateLogic();
       renderer.render(scene, camera);
     }
-    updateCalculations();
     animate();
   </script>
 </body>
