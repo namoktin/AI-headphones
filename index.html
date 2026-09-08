@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>AI Audio Guide - Open World 3D (Fixed Jump & Water)</title>
+  <title>AI Audio Guide - Full Audio Support</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -42,9 +42,9 @@
 <body>
 
   <div id="start-overlay">
-    <h1 style="font-size: 24px; color: #38bdf8; margin-bottom: 8px;">Quần Thể Di Tích Thế Giới Mở</h1>
+    <h1 style="font-size: 24px; color: #38bdf8; margin-bottom: 8px;">Quần Thể Di Tích Mega 3D</h1>
     <p style="font-size: 14px; color: #94a3b8; max-width: 380px; line-height: 1.6;">
-      Nhấn nút Nhảy (Shift) để nhảy qua bờ tường và lội xuống Hồ Sen!
+      Đã phục hồi hỗ trợ phát file MP3 (Thư mục <code>audio/</code>).
     </p>
     <button class="btn-start" id="btn-start">▶ KHỞI HÀNH</button>
   </div>
@@ -58,7 +58,7 @@
         <span id="poi-name">Đang quét không gian...</span>
         <span id="floor-badge" class="badge-floor">NGOÀI TRỜI</span>
       </div>
-      <div class="hud-desc" id="poi-desc">Đã mở khóa vật lý 3D: Nhảy để vượt chướng ngại vật thấp.</div>
+      <div class="hud-desc" id="poi-desc">Hệ thống sẽ ưu tiên phát file mp3, nếu không có sẽ tự đọc AI.</div>
     </div>
   </div>
 
@@ -72,7 +72,7 @@
   </div>
 
   <script>
-    // --- 1. ÂM THANH WEB AUDIO ---
+    // --- 1. ÂM THANH WEB AUDIO LÕI ---
     let audioCtx = null;
     function getAudioContext() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -117,18 +117,14 @@
     sunLight.position.set(20, 50, 30);
     scene.add(sunLight);
 
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(150, 150),
-      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 })
-    );
-    floor.rotation.x = -Math.PI / 2;
-    scene.add(floor);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 }));
+    floor.rotation.x = -Math.PI / 2; scene.add(floor);
     scene.add(new THREE.GridHelper(150, 150, 0x0284c7, 0x0f172a));
 
     const obstacles = [];
     const artifacts = [];
 
-    // --- 3. CỔNG TAM QUAN ---
+    // --- 3. KIẾN TRÚC & OBJECT ---
     const walkway = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 130), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 }));
     walkway.position.set(0, 0.02, 5); scene.add(walkway);
 
@@ -143,11 +139,11 @@
     const gRoofR = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.8, 1.4), gRoofMat); gRoofR.position.set(4.5, 4.4, 0); gateGroup.add(gRoofR);
     gateGroup.position.set(0, 0, 50); scene.add(gateGroup);
     
-    // Cột cổng không cho đi xuyên
     obstacles.push({ type: 'circle', x: -5, z: 50, r: 0.8 }, { type: 'circle', x: -2, z: 50, r: 0.8 }, { type: 'circle', x: 2, z: 50, r: 0.8 }, { type: 'circle', x: 5, z: 50, r: 0.8 });
-    artifacts.push({ id: "POI_GATE", name: "Cổng Tam Quan", floor: "NGOÀI TRỜI", pos: new THREE.Vector3(0, 4, 50), mesh: gRoofMain, origColor: gRoofMain.material.color.getHex(), audioText: "Cổng Tam Quan ba lối đi, tượng trưng cho ba góc nhìn của Phật giáo." });
+    
+    // KHÔI PHỤC AUDIO SRC
+    artifacts.push({ id: "POI_GATE", name: "Cổng Tam Quan", floor: "NGOÀI TRỜI", pos: new THREE.Vector3(0, 4, 50), mesh: gRoofMain, origColor: gRoofMain.material.color.getHex(), audioSrc: "audio/cong_tam_quan.mp3", audioText: "Cổng Tam Quan ba lối đi, tượng trưng cho ba góc nhìn của Phật giáo." });
 
-    // --- 4. HỒ SEN VÀ CÁC BỨC TƯỜNG HITBOX 3D ---
     const poolGroup = new THREE.Group();
     const poolWater = new THREE.Mesh(new THREE.BoxGeometry(22, 0.1, 22), new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.1, metalness: 0.8 }));
     poolWater.position.set(0, 0.01, 25); poolGroup.add(poolWater);
@@ -167,13 +163,11 @@
     }
     scene.add(poolGroup);
 
-    // THAY THẾ KHỐI VUÔNG CHẶN NƯỚC BẰNG 4 BỨC TƯỜNG CÓ CHIỀU CAO (h=0.4m)
     obstacles.push({ type: 'rect', minX: -12.2, maxX: 12.2, minZ: 13, maxZ: 14.2, h: 0.4 });
     obstacles.push({ type: 'rect', minX: -12.2, maxX: 12.2, minZ: 35.8, maxZ: 37, h: 0.4 });
     obstacles.push({ type: 'rect', minX: -12.2, maxX: -10.8, minZ: 14, maxZ: 36, h: 0.4 });
     obstacles.push({ type: 'rect', minX: 10.8, maxX: 12.2, minZ: 14, maxZ: 36, h: 0.4 });
 
-    // Khuê Văn Các
     const kvcGroup = new THREE.Group();
     const kvcPillars = [[-3, -3], [3, -3], [-3, 3], [3, 3]];
     kvcPillars.forEach(([px, pz]) => {
@@ -183,20 +177,20 @@
     const kvcFloor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.4, 8), new THREE.MeshStandardMaterial({ color: 0xb91c1c })); kvcFloor.position.set(0, 3.2, 0);
     const kvcTop = new THREE.Mesh(new THREE.BoxGeometry(7.6, 2.5, 7.6), new THREE.MeshStandardMaterial({ color: 0x991b1b })); kvcTop.position.set(0, 4.65, 0);
     const kvcRoof = new THREE.Mesh(new THREE.ConeGeometry(6.5, 2, 4), new THREE.MeshStandardMaterial({ color: 0x7f1d1d })); kvcRoof.rotation.y = Math.PI / 4; kvcRoof.position.set(0, 6.9, 0);
-    kvcGroup.add(kvcFloor, kvcTop, kvcRoof);
-    kvcGroup.position.set(0, 0, 10); scene.add(kvcGroup);
-    artifacts.push({ id: "POI_KVC", name: "Khuê Văn Các", floor: "NGOÀI TRỜI", pos: new THREE.Vector3(0, 4.6, 10), mesh: kvcTop, origColor: kvcTop.material.color.getHex(), audioText: "Khuê Văn Các với kiến trúc lầu vuông tượng trưng cho sao Khuê." });
+    kvcGroup.add(kvcFloor, kvcTop, kvcRoof); kvcGroup.position.set(0, 0, 10); scene.add(kvcGroup);
+    
+    // KHÔI PHỤC AUDIO SRC
+    artifacts.push({ id: "POI_KVC", name: "Khuê Văn Các", floor: "NGOÀI TRỜI", pos: new THREE.Vector3(0, 4.6, 10), mesh: kvcTop, origColor: kvcTop.material.color.getHex(), audioSrc: "audio/khue_van_cac.mp3", audioText: "Khuê Văn Các với kiến trúc lầu vuông tượng trưng cho sao Khuê." });
 
-    // --- 5. OBJECT TRANG TRÍ ---
     function createStoneLion(x, z, rotY) {
-      const lion = new THREE.Group();
-      const lMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9 });
+      const lion = new THREE.Group(); const lMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9 });
       const base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.8), lMat); base.position.y = 0.4;
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 1.2), lMat); body.position.set(0, 1.4, 0);
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 1.0), lMat); head.position.set(0, 2.2, -0.2);
       lion.add(base, body, head); lion.position.set(x, 0, z); lion.rotation.y = rotY; scene.add(lion);
       obstacles.push({ type: 'circle', x: x, z: z, r: 1.0 });
-      artifacts.push({ id: `POI_LION_${x}_${z}`, name: "Nghê Đá Trấn Cửa", floor: "TRƯỚC THỀM", pos: new THREE.Vector3(x, 1.8, z), mesh: head, origColor: head.material.color.getHex(), audioText: "Nghê đá là linh vật canh gác bình yên cho di tích." });
+      // KHÔI PHỤC AUDIO SRC
+      artifacts.push({ id: `POI_LION_${x}_${z}`, name: "Nghê Đá Trấn Cửa", floor: "TRƯỚC THỀM", pos: new THREE.Vector3(x, 1.8, z), mesh: head, origColor: head.material.color.getHex(), audioSrc: "audio/nghe_da.mp3", audioText: "Nghê đá là linh vật bản địa của Việt Nam canh gác bình yên." });
     }
     createStoneLion(-4.5, 45, Math.PI/6); createStoneLion(4.5, 45, -Math.PI/6);
     createStoneLion(-5, -8, 0); createStoneLion(5, -8, 0);
@@ -206,8 +200,17 @@
       const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), lMat);
       lantern.scale.y = 1.3; lantern.position.set(x, y, z); scene.add(lantern);
     }
-    createLantern(-3, 2.8, 10); createLantern(3, 2.8, 10);
-    createLantern(-4, 2.8, -20); createLantern(4, 2.8, -20);
+    createLantern(-3, 2.8, 10); createLantern(3, 2.8, 10); createLantern(-4, 2.8, -20); createLantern(4, 2.8, -20);
+
+    function createBonsai(x, z) {
+      const potMat = new THREE.MeshStandardMaterial({ color: 0x9a3412 }); const leafMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.8 });
+      const bonsai = new THREE.Group();
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.6, 8), potMat); pot.position.y = 0.3;
+      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7), leafMat); bush.position.set(0, 1.1, 0);
+      bonsai.add(pot, bush); bonsai.position.set(x, 0, z); scene.add(bonsai);
+      obstacles.push({ type: 'circle', x: x, z: z, r: 0.6 });
+    }
+    createBonsai(-6, 2); createBonsai(6, 2); createBonsai(-7, 40); createBonsai(7, 40);
 
     function createBench(x, z, rotY) {
       const bench = new THREE.Group();
@@ -215,10 +218,9 @@
       const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: 0x64748b })); leg1.position.set(-0.9, 0.25, 0);
       const leg2 = leg1.clone(); leg2.position.set(0.9, 0.25, 0);
       bench.add(seat, leg1, leg2); bench.position.set(x, 0, z); bench.rotation.y = rotY; scene.add(bench);
-      obstacles.push({ type: 'circle', x: x, z: z, r: 1.5, h: 0.6 }); // Thêm chiều cao cho ghế để có thể nhảy qua
+      obstacles.push({ type: 'circle', x: x, z: z, r: 1.5, h: 0.6 });
     }
-    createBench(-8, 30, Math.PI/2); createBench(8, 30, -Math.PI/2);
-    createBench(-8, 5, Math.PI/2); createBench(8, 5, -Math.PI/2);
+    createBench(-8, 30, Math.PI/2); createBench(8, 30, -Math.PI/2); createBench(-8, 5, Math.PI/2); createBench(8, 5, -Math.PI/2);
 
     function plantTree(x, z, scale = 1) {
       const tree = new THREE.Group();
@@ -230,15 +232,12 @@
     plantTree(-12, 55, 1.5); plantTree(13, 52, 1.4); plantTree(-15, 35, 1.6); plantTree(15, 38, 1.2);
     plantTree(-18, 20, 1.8); plantTree(18, 15, 1.5); plantTree(-10, -3, 1.4); plantTree(10, -5, 1.3);
 
-    // --- 6. LẦU ĐẠI ĐÌNH & THỀM ĐÁ ---
     const terraceMat = new THREE.MeshStandardMaterial({ color: 0x57534e });
-    const terrace = new THREE.Mesh(new THREE.BoxGeometry(36, 0.6, 26), terraceMat);
-    terrace.position.set(0, 0.3, -25); scene.add(terrace);
+    const terrace = new THREE.Mesh(new THREE.BoxGeometry(36, 0.6, 26), terraceMat); terrace.position.set(0, 0.3, -25); scene.add(terrace);
 
     const mainStairs = new THREE.Group();
     for(let i = 0; i < 4; i++) {
-       const s = new THREE.Mesh(new THREE.BoxGeometry(14, 0.15, 0.5), terraceMat);
-       s.position.set(0, 0.075 + i * 0.15, -11.75 - i * 0.5); mainStairs.add(s);
+       const s = new THREE.Mesh(new THREE.BoxGeometry(14, 0.15, 0.5), terraceMat); s.position.set(0, 0.075 + i * 0.15, -11.75 - i * 0.5); mainStairs.add(s);
     }
     scene.add(mainStairs);
 
@@ -264,24 +263,23 @@
 
     const tablet = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.6, 0.2), new THREE.MeshStandardMaterial({ color: 0x64748b })); tablet.position.set(0, 1.2, -5); scene.add(tablet);
     obstacles.push({ type: 'circle', x: 0, z: -5, r: 0.8 });
-    artifacts.push({ id: "POI_BIA", name: "Bia Tiến Sĩ Triều Lê", floor: "S N ĐÌNH", pos: new THREE.Vector3(0, 1.2, -5), mesh: tablet, origColor: tablet.material.color.getHex(), audioText: "Bia Tiến Sĩ khắc lời răn dạy: Hiền tài là nguyên khí của quốc gia." });
+    artifacts.push({ id: "POI_BIA", name: "Bia Tiến Sĩ Triều Lê", floor: "SÂN ĐÌNH", pos: new THREE.Vector3(0, 1.2, -5), mesh: tablet, origColor: tablet.material.color.getHex(), audioSrc: "audio/bia_tien_si.mp3", audioText: "Bia Tiến Sĩ khắc lời răn dạy: Hiền tài là nguyên khí của quốc gia." });
 
     const burner = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 1.0, 12), new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.7 })); burner.position.set(-3, 1.1, -18); scene.add(burner);
     obstacles.push({ type: 'circle', x: -3, z: -18, r: 0.6 });
-    artifacts.push({ id: "POI_LU", name: "Lư Hương Tam Khí", floor: "THỀM ĐẠI ĐÌNH", pos: new THREE.Vector3(-3, 1.1, -18), mesh: burner, origColor: burner.material.color.getHex(), audioText: "Lư hương đồng đúc thủ công mang đậm dấu ấn nghệ thuật." });
+    artifacts.push({ id: "POI_LU", name: "Lư Hương Tam Khí", floor: "THỀM ĐẠI ĐÌNH", pos: new THREE.Vector3(-3, 1.1, -18), mesh: burner, origColor: burner.material.color.getHex(), audioSrc: "audio/luu_huong.mp3", audioText: "Lư hương đồng đúc thủ công mang đậm dấu ấn nghệ thuật." });
 
     const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.9, 16), new THREE.MeshStandardMaterial({ color: 0x991b1b })); drum.rotation.z = Math.PI/2; drum.position.set(-2, 4.6, -25); scene.add(drum);
-    artifacts.push({ id: "POI_TRONG", name: "Trống Sấm Khải Hoàn", floor: "GÁC CHUÔNG", pos: new THREE.Vector3(-2, 4.6, -25), mesh: drum, origColor: drum.material.color.getHex(), audioText: "Trống sấm vang dội báo hiệu giờ phút thiêng liêng." });
+    artifacts.push({ id: "POI_TRONG", name: "Trống Sấm Khải Hoàn", floor: "GÁC CHUÔNG", pos: new THREE.Vector3(-2, 4.6, -25), mesh: drum, origColor: drum.material.color.getHex(), audioSrc: "audio/trong_sam.mp3", audioText: "Trống sấm vang dội báo hiệu giờ phút thiêng liêng." });
 
-
-    // --- 7. VẬT LÝ, TIA NHÌN & NHẢY (GRAVITY, JUMP & LOS) ---
+    // --- 5. HỆ THỐNG VẬT LÝ & XỬ LÝ M THANH KÉP ---
     let posX = 0, posZ = 60, posY = 1.6;
-    let velocityY = 0;
-    const gravity = 0.018;
-    const jumpPower = 0.25;
-    
+    let velocityY = 0; const gravity = 0.018; const jumpPower = 0.25;
     let yaw = 0, pitch = 0;
     let isAudioPlaying = false, currentPlaying = null, currentLocking = null, lockStartTime = 0;
+    
+    // BIẾN LƯU TRỮ AUDIO FILE
+    let currentAudio = null; 
     const cooldownMap = {};
 
     const poiNameEl = document.getElementById('poi-name');
@@ -289,56 +287,39 @@
     const poiDescEl = document.getElementById('poi-desc');
     const crosshairEl = document.getElementById('crosshair');
 
-    // [CẬP NHẬT] ĐỘ CAO CHO MẶT NƯỚC VÀ BỜ TƯỜNG
     function getElevation(x, z) {
       if (x >= 3.9 && x <= 5.1 && z <= -23.8 && z >= -29.05) { const prog = (-23.8 - z) / 5.25; return 0.6 + Math.min(3.3, Math.max(0, prog * 3.3)); }
       if (x >= -4.5 && x <= 4.5 && z >= -30.5 && z <= -24.5 && posY >= 3.5) return 0.6 + 3.3;
       if (x >= -7 && x <= 7 && z <= -11.5 && z >= -13.7) { const prog = (-11.5 - z) / 2.2; return Math.min(0.6, Math.max(0, prog * 0.6)); }
       if (x >= -18 && x <= 18 && z >= -38 && z <= -13.7) return 0.6;
-      
-      // Bờ tường hồ sen
       if (x >= -12.2 && x <= 12.2 && z >= 13 && z <= 14.2) return 0.4;
       if (x >= -12.2 && x <= 12.2 && z >= 35.8 && z <= 37) return 0.4;
       if (x >= -12.2 && x <= -10.8 && z >= 14 && z <= 36) return 0.4;
       if (x >= 10.8 && x <= 12.2 && z >= 14 && z <= 36) return 0.4;
-      // Trũng nước hồ sen lún xuống một chút
       if (x > -10.8 && x < 10.8 && z > 14.2 && z < 35.8) return -0.05;
-
       return 0.0;
     }
 
-    // [CẬP NHẬT] HITBOX 3D: CÓ CHIỀU CAO
     function checkCollision(nx, nz, footY) {
       if (nx < -72 || nx > 72 || nz < -72 || nz > 72) return true;
       for (const obs of obstacles) {
-        // Nhảy cao hơn vật cản thì cho phép đi xuyên qua
         if (obs.h !== undefined && footY >= obs.h - 0.1) continue;
-
         if (obs.type === 'rect') { if (nx > obs.minX && nx < obs.maxX && nz > obs.minZ && nz < obs.maxZ) return true; }
         else if (obs.type === 'circle') { if (Math.hypot(nx - obs.x, nz - obs.z) < obs.r + 0.35) return true; }
       }
       return false;
     }
 
-    // [MỚI] TIA NHÌN LINE OF SIGHT (CHỐNG NHÌN XUYÊN VẬT CẢN)
     function checkLineOfSight(x1, z1, x2, z2) {
       const dx = x2 - x1; const dz = z2 - z1;
-      const dist = Math.hypot(dx, dz);
-      const step = 0.5;
-      const checkDist = dist - 1.2; 
+      const dist = Math.hypot(dx, dz); const step = 0.5; const checkDist = dist - 1.2; 
       if (checkDist <= 0) return true;
-
       for (let d = step; d < checkDist; d += step) {
-        const tx = x1 + (dx * d) / dist;
-        const tz = z1 + (dz * d) / dist;
+        const tx = x1 + (dx * d) / dist; const tz = z1 + (dz * d) / dist;
         for (const obs of obstacles) {
-          // Bờ tường thấp (0.4m) hoặc ghế đá không cản được tầm nhìn mắt người
           if (obs.h !== undefined && obs.h < 1.0) continue; 
-          if (obs.type === 'rect') {
-            if (tx > obs.minX && tx < obs.maxX && tz > obs.minZ && tz < obs.maxZ) return false;
-          } else if (obs.type === 'circle') {
-            if (Math.hypot(tx - obs.x, tz - obs.z) < obs.r) return false;
-          }
+          if (obs.type === 'rect') { if (tx > obs.minX && tx < obs.maxX && tz > obs.minZ && tz < obs.maxZ) return false; } 
+          else if (obs.type === 'circle') { if (Math.hypot(tx - obs.x, tz - obs.z) < obs.r) return false; }
         }
       }
       return true;
@@ -346,31 +327,45 @@
 
     function doJump() {
       const floorY = getElevation(posX, posZ) + 1.6;
-      // Nhảy được khi đang đứng trên sàn (hoặc dưới nước)
       if (posY <= floorY + 0.15 && velocityY <= 0) { velocityY = jumpPower; }
     }
     document.getElementById('btn-jump').addEventListener('mousedown', doJump);
     document.getElementById('btn-jump').addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); });
 
+    // DỪNG CẢ FILE MP3 VÀ GIỌNG AI
     function stopNarration() {
       if (!isAudioPlaying) return;
-      playBeep(440, 0.1); if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      playBeep(440, 0.1); 
+      
+      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      
       if (currentPlaying) cooldownMap[currentPlaying.id] = Date.now() + 10000;
       isAudioPlaying = false; currentPlaying = null; currentLocking = null; lockStartTime = Date.now();
       updateLogic();
     }
     document.getElementById('btn-stop').addEventListener('click', stopNarration);
 
+    // PHÁT FILE MP3 (NẾU CÓ), NẾU LỖI CHUYỂN SANG GIỌNG AI
     function playNarration(item) {
       isAudioPlaying = true; currentPlaying = item; playChime();
-      const onFinished = () => { isAudioPlaying = false; currentPlaying = null; cooldownMap[item.id] = Date.now() + 10000; lockStartTime = Date.now(); updateLogic(); };
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); const utter = new SpeechSynthesisUtterance(item.audioText); utter.lang = 'vi-VN';
-        utter.onend = onFinished; utter.onerror = onFinished; window.speechSynthesis.speak(utter);
-      } else { setTimeout(onFinished, 6000); }
+      
+      const onFinished = () => { 
+        isAudioPlaying = false; currentPlaying = null; currentAudio = null;
+        cooldownMap[item.id] = Date.now() + 10000; lockStartTime = Date.now(); updateLogic(); 
+      };
+
+      currentAudio = new Audio(item.audioSrc);
+      currentAudio.addEventListener('ended', onFinished);
+      currentAudio.play().catch(() => {
+        // Fallback đọc AI
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel(); const utter = new SpeechSynthesisUtterance(item.audioText); utter.lang = 'vi-VN';
+          utter.onend = onFinished; utter.onerror = onFinished; window.speechSynthesis.speak(utter);
+        } else { setTimeout(onFinished, 6000); }
+      });
     }
 
-    // --- 8. AI SCAN & LOGIC ---
     function updateLogic() {
       const yawRad = THREE.MathUtils.degToRad(yaw); const pitchRad = THREE.MathUtils.degToRad(pitch);
       const lookDir = new THREE.Vector3(Math.sin(yawRad) * Math.cos(pitchRad), Math.sin(pitchRad), -Math.cos(yawRad) * Math.cos(pitchRad)).normalize();
@@ -388,11 +383,8 @@
       artifacts.forEach(item => {
         const toTarget = new THREE.Vector3().subVectors(item.pos, eyePos);
         const dist = toTarget.length(); const angle = THREE.MathUtils.radToDeg(lookDir.angleTo(toTarget));
-        
         if (dist <= 14.0 && angle <= minAngle) { 
-          if (checkLineOfSight(posX, posZ, item.pos.x, item.pos.z)) {
-             minAngle = angle; detected = item;
-          }
+          if (checkLineOfSight(posX, posZ, item.pos.x, item.pos.z)) { minAngle = angle; detected = item; }
         } 
       });
 
@@ -431,7 +423,7 @@
       }
     }
 
-    // --- 9. ĐIỀU KHIỂN & RENDER 60FPS ---
+    // --- 6. EVENT LISTENERS ---
     const keys = {};
     window.addEventListener('keydown', (e) => { 
       keys[e.code] = true; 
@@ -509,6 +501,7 @@
     });
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
+    // --- 7. VÒNG LẶP RENDER ---
     function animate() {
       requestAnimationFrame(animate);
       const speed = 0.11; 
@@ -526,11 +519,10 @@
       if (moveDir.lengthSq() > 0) {
         moveDir.normalize();
         let nextX = posX + moveDir.x * speed; let nextZ = posZ + moveDir.z * speed;
-        let footY = posY - 1.6; // Tính độ cao của bàn chân
+        let footY = posY - 1.6; 
         if (!checkCollision(nextX, nextZ, footY)) { posX = nextX; posZ = nextZ; }
       }
 
-      // XỬ LÝ TRỌNG LỰC (GRAVITY)
       const currentSurfaceY = getElevation(posX, posZ);
       const targetFloorY = currentSurfaceY + 1.6;
 
