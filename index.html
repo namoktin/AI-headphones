@@ -31,10 +31,7 @@
       top: 0;
       left: 0;
       z-index: 1;
-      cursor: crosshair;
     }
-
-    /* Màn hình khởi động chung */
     #start-overlay {
       position: absolute;
       top: 0;
@@ -61,11 +58,7 @@
       box-shadow: 0 0 25px rgba(2, 132, 199, 0.6);
       cursor: pointer;
       margin-top: 20px;
-      transition: transform 0.1s;
     }
-    .btn-start:active { transform: scale(0.96); }
-
-    /* Tâm ngắm (Reticle) */
     #crosshair {
       position: absolute;
       top: 50%;
@@ -98,8 +91,6 @@
       from { transform: translate(-50%, -50%) scale(0.95); }
       to { transform: translate(-50%, -50%) scale(1.1); }
     }
-
-    /* Thanh thông báo phía trên */
     .top-hud {
       position: absolute;
       top: env(safe-area-inset-top, 16px);
@@ -135,8 +126,6 @@
       margin-top: 4px;
       line-height: 1.4;
     }
-
-    /* Bảng phím tắt dành cho Laptop/PC */
     #desktop-guide {
       background: rgba(15, 23, 42, 0.88);
       backdrop-filter: blur(10px);
@@ -145,7 +134,7 @@
       padding: 12px 16px;
       font-size: 12px;
       color: #94a3b8;
-      display: none; /* Mặc định ẩn, bật lên nếu dùng chuột */
+      display: none;
       pointer-events: auto;
     }
     .key-badge {
@@ -158,8 +147,6 @@
       font-weight: bold;
       border: 1px solid #475569;
     }
-
-    /* Cần gạt ảo (Chỉ hiện trên điện thoại) */
     #joystick-container {
       position: absolute;
       bottom: max(env(safe-area-inset-bottom, 24px), 24px);
@@ -184,8 +171,6 @@
       pointer-events: none;
       transform: translate(0px, 0px);
     }
-
-    /* Cụm nút thao tác bên phải */
     .action-controls {
       position: absolute;
       bottom: max(env(safe-area-inset-bottom, 24px), 24px);
@@ -235,7 +220,6 @@
 </head>
 <body>
 
-  <!-- MÀN HÌNH CHẠM BAN ĐẦU -->
   <div id="start-overlay">
     <h1 style="font-size: 22px; color: #38bdf8; margin-bottom: 8px;">AI Audio Guide - Di Tích Văn Miếu</h1>
     <p id="overlay-instruct" style="font-size: 13px; color: #94a3b8; max-width: 360px; line-height: 1.6;">
@@ -247,7 +231,6 @@
   <div id="canvas-container"></div>
   <div id="crosshair"></div>
 
-  <!-- THANH TRẠNG THÁI HUD -->
   <div class="top-hud">
     <div class="hud-card">
       <div class="hud-title">
@@ -256,27 +239,22 @@
       </div>
       <div class="hud-desc" id="poi-desc">Hệ thống đang quét không gian...</div>
     </div>
-
-    <!-- Hướng dẫn phím cho Laptop -->
     <div id="desktop-guide">
       <div><span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> : Di chuyển</div>
       <div style="margin-top: 4px;"><b>Chuột</b> : Quay đầu | <span class="key-badge">X</span> : Ngắt bài | <span class="key-badge">Space</span> : Hỏi AI</div>
     </div>
   </div>
 
-  <!-- CẦN GẠT ẢO CHO ĐIỆN THOẠI -->
   <div id="joystick-container">
     <div id="joystick-knob"></div>
   </div>
 
-  <!-- NÚT THAO TÁC CẢM ỨNG & CHUỘT -->
   <div class="action-controls">
     <button class="btn-stop" id="btn-stop" title="Phím tắt: X">✕</button>
     <button class="btn-ptt" id="btn-ptt" title="Phím tắt: Space">GIỮ ĐỂ<br>HỎI AI</button>
   </div>
 
   <script>
-    // --- 1. NHẬN DIỆN THIẾT BỊ (MOBILE VS DESKTOP) ---
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     const joystickContainer = document.getElementById('joystick-container');
     const desktopGuide = document.getElementById('desktop-guide');
@@ -285,14 +263,13 @@
     if (isTouchDevice) {
       joystickContainer.style.display = 'block';
       desktopGuide.style.display = 'none';
-      overlayInstruct.innerHTML = "<b>Điện thoại:</b> Dùng ngón tay cái bên trái để đi bộ, ngón cái bên phải để quay đầu nhìn cổ vật.";
+      overlayInstruct.innerHTML = "<b>Điện thoại:</b> Tay trái kéo cần gạt để đi lại. Tay phải vuốt trên màn hình để quay đầu.";
     } else {
       joystickContainer.style.display = 'none';
       desktopGuide.style.display = 'block';
-      overlayInstruct.innerHTML = "<b>Laptop:</b> Nhấn để khóa chuột và quay đầu. Dùng phím <span class='key-badge'>W-A-S-D</span> để đi lại, phím <span class='key-badge'>Space</span> để nói chuyện.";
+      overlayInstruct.innerHTML = "<b>Laptop:</b> Nhấp chuột để quay đầu, <span class='key-badge'>W-A-S-D</span> để đi lại, <span class='key-badge'>Space</span> để hỏi AI.";
     }
 
-    // --- 2. KHỞI TẠO THREE.JS ---
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x070b14);
@@ -304,13 +281,11 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
-    // Ánh sáng
     scene.add(new THREE.AmbientLight(0xffffff, 0.75));
     const dirLight = new THREE.DirectionalLight(0xffedd5, 0.85);
     dirLight.position.set(5, 12, 6);
     scene.add(dirLight);
 
-    // Mặt sàn
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(22, 22),
       new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 })
@@ -319,7 +294,6 @@
     scene.add(floor);
     scene.add(new THREE.GridHelper(22, 22, 0x38bdf8, 0x0f172a));
 
-    // Cột đình & Mái ngói
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
     [[-3.5, -4], [3.5, -4], [-3.5, 0], [3.5, 0]].forEach(([px, pz]) => {
       const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 4, 12), woodMat);
@@ -331,8 +305,7 @@
     roof.rotation.y = Math.PI / 4;
     scene.add(roof);
 
-    // --- 3. CỔ VẬT TRONG KHÔNG GIAN ---
-    // Bia Tiến Sĩ
+    // Cổ vật
     const steleGroup = new THREE.Group();
     const turtle = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.35, 12), new THREE.MeshStandardMaterial({ color: 0x475569 }));
     turtle.position.y = 0.18;
@@ -342,45 +315,21 @@
     steleGroup.position.set(0, 0, -3.8);
     scene.add(steleGroup);
 
-    // Lư Hương Đồng
     const burner = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.25, 0.8, 12), new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.7 }));
     burner.position.set(-2.8, 0.5, -1.5);
     scene.add(burner);
 
-    // Hoành Phi
     const plaque = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.7, 0.1), new THREE.MeshStandardMaterial({ color: 0xb91c1c }));
     plaque.position.set(0, 3.6, -3.9);
     scene.add(plaque);
 
     const artifacts = [
-      { 
-        id: "POI_BIA_01", 
-        name: "Bia Tiến Sĩ Cổ Triều Lê", 
-        pos: new THREE.Vector3(0, 1.1, -3.8), 
-        mesh: tablet, 
-        audioSrc: "audio/bia_tien_si.mp3", 
-        audioText: "Bia Tiến Sĩ dựng năm 1484, ghi danh các bậc hiền tài đỗ đại khoa thời vua Lê Thánh Tông." 
-      },
-      { 
-        id: "POI_LU_HUONG", 
-        name: "Lư Hương Đồng Tam Khí", 
-        pos: new THREE.Vector3(-2.8, 0.6, -1.5), 
-        mesh: burner, 
-        audioSrc: "audio/luu_huong.mp3", 
-        audioText: "Lư hương đồng đúc thủ công tam khí thời Hậu Lê, khảm hoa văn lưỡng long chầu nguyệt tinh xảo." 
-      },
-      { 
-        id: "POI_HOANH_PHI", 
-        name: "Hoành Phi 'Vạn Thế Sư Biểu'", 
-        pos: new THREE.Vector3(0, 3.6, -3.9), 
-        mesh: plaque, 
-        audioSrc: "audio/hoanh_phi.mp3", 
-        audioText: "Bức hoành phi sơn son thếp vàng ca ngợi công đức người thầy tiêu biểu của muôn đời." 
-      }
+      { id: "POI_BIA_01", name: "Bia Tiến Sĩ Cổ Triều Lê", pos: new THREE.Vector3(0, 1.1, -3.8), mesh: tablet, audioSrc: "audio/bia_tien_si.mp3", audioText: "Bia Tiến Sĩ dựng năm 1484, ghi danh các bậc hiền tài đỗ đại khoa thời vua Lê Thánh Tông." },
+      { id: "POI_LU_HUONG", name: "Lư Hương Đồng Tam Khí", pos: new THREE.Vector3(-2.8, 0.6, -1.5), mesh: burner, audioSrc: "audio/luu_huong.mp3", audioText: "Lư hương đồng đúc thủ công tam khí thời Hậu Lê, khảm hoa văn lưỡng long chầu nguyệt tinh xảo." },
+      { id: "POI_HOANH_PHI", name: "Hoành Phi 'Vạn Thế Sư Biểu'", pos: new THREE.Vector3(0, 3.6, -3.9), mesh: plaque, audioSrc: "audio/hoanh_phi.mp3", audioText: "Bức hoành phi sơn son thếp vàng ca ngợi công đức người thầy tiêu biểu của muôn đời." }
     ];
     artifacts.forEach(a => { a.origColor = a.mesh.material.color.getHex(); });
 
-    // --- 4. BIẾN ĐIỀU KHIỂN & MÁY TRẠNG THÁI ---
     let posX = 0, posZ = 2, posY = 1.6;
     let yaw = 0, pitch = 0;
     let isAudioPlaying = false;
@@ -395,7 +344,6 @@
     const poiDescEl = document.getElementById('poi-desc');
     const crosshairEl = document.getElementById('crosshair');
 
-    // Hàm Dừng m Thanh
     function stopNarration() {
       if (!isAudioPlaying) return;
       if (currentAudio) { currentAudio.pause(); currentAudio = null; }
@@ -410,7 +358,6 @@
     }
     document.getElementById('btn-stop').addEventListener('click', stopNarration);
 
-    // Hàm Kích Hoạt m Thanh
     function playNarration(item) {
       isAudioPlaying = true;
       currentPlaying = item;
@@ -444,7 +391,6 @@
       });
     }
 
-    // --- 5. TÍNH TOÁN KHÔNG GIAN VÀ LOGIC ---
     function updateLogic() {
       const yawRad = THREE.MathUtils.degToRad(yaw);
       const pitchRad = THREE.MathUtils.degToRad(pitch);
@@ -461,7 +407,6 @@
       const eyePos = new THREE.Vector3(posX, posY, posZ);
       let detected = null;
 
-      // Quét hình nón FOV (cự ly 4.2m, góc 45 độ)
       artifacts.forEach(item => {
         const toTarget = new THREE.Vector3().subVectors(item.pos, eyePos);
         const dist = toTarget.length();
@@ -477,7 +422,6 @@
 
       const now = Date.now();
 
-      // MÁY TRẠNG THÁI
       if (isAudioPlaying && currentPlaying) {
         poiNameEl.innerText = `🔊 ĐANG PHÁT: ${currentPlaying.name}`;
         poiNameEl.style.color = "#38bdf8";
@@ -524,29 +468,21 @@
       }
     }
 
-    // --- 6. HỆ THỐNG ĐIỀU KHIỂN KÉP (KEYBOARD/MOUSE + TOUCH) ---
-    // A. Phím bấm Laptop (W-A-S-D, Space, X)
+    // Điều khiển Laptop
     const keys = {};
     window.addEventListener('keydown', (e) => {
       keys[e.code] = true;
       if (e.code === 'KeyX') stopNarration();
-      if (e.code === 'Space' && !e.repeat) {
-        setPTTState(true);
-      }
+      if (e.code === 'Space' && !e.repeat) setPTTState(true);
     });
     window.addEventListener('keyup', (e) => {
       keys[e.code] = false;
-      if (e.code === 'Space') {
-        setPTTState(false);
-      }
+      if (e.code === 'Space') setPTTState(false);
     });
 
-    // B. Chuột Laptop (Khóa chuột Pointer Lock để quay đầu)
     let isPointerLocked = false;
     container.addEventListener('click', () => {
-      if (!isTouchDevice && !isPointerLocked) {
-        container.requestPointerLock();
-      }
+      if (!isTouchDevice && !isPointerLocked) container.requestPointerLock();
     });
     document.addEventListener('pointerlockchange', () => {
       isPointerLocked = (document.pointerLockElement === container);
@@ -559,42 +495,49 @@
       }
     });
 
-    // C. Cảm ứng Điện thoại (Joystick & Vuốt màn hình)
+    // Điều khiển Cảm ứng Điện thoại (Tách ID độc lập)
     let joyMove = { x: 0, z: 0 };
     let joyTouchId = null;
     let joyCenter = { x: 0, y: 0 };
     const joyKnob = document.getElementById('joystick-knob');
 
+    let lookTouchId = null;
+    let lookLastX = 0;
+    let lookLastY = 0;
+
     window.addEventListener('touchstart', (e) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
+        if (e.target.closest('#btn-ptt') || e.target.closest('#btn-stop') || e.target.closest('#btn-start')) continue;
+
         if (touch.clientX < window.innerWidth * 0.45 && joyTouchId === null) {
           joyTouchId = touch.identifier;
           const rect = joystickContainer.getBoundingClientRect();
           joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
           handleJoy(touch.clientX, touch.clientY);
-        } else if (touch.clientX >= window.innerWidth * 0.45) {
-          touch.lastX = touch.clientX;
-          touch.lastY = touch.clientY;
+        } else if (touch.clientX >= window.innerWidth * 0.45 && lookTouchId === null) {
+          lookTouchId = touch.identifier;
+          lookLastX = touch.clientX;
+          lookLastY = touch.clientY;
         }
       }
     }, { passive: false });
 
     window.addEventListener('touchmove', (e) => {
+      if (e.cancelable) e.preventDefault();
+
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         if (touch.identifier === joyTouchId) {
           handleJoy(touch.clientX, touch.clientY);
-        } else if (touch.clientX >= window.innerWidth * 0.45) {
-          if (touch.lastX !== undefined) {
-            const dx = touch.clientX - touch.lastX;
-            const dy = touch.clientY - touch.lastY;
-            yaw = (yaw + dx * 0.35 + 360) % 360;
-            pitch = Math.max(-45, Math.min(45, pitch - dy * 0.3));
-            updateLogic();
-          }
-          touch.lastX = touch.clientX;
-          touch.lastY = touch.clientY;
+        } else if (touch.identifier === lookTouchId) {
+          const dx = touch.clientX - lookLastX;
+          const dy = touch.clientY - lookLastY;
+          yaw = (yaw + dx * 0.4 + 360) % 360;
+          pitch = Math.max(-45, Math.min(45, pitch - dy * 0.35));
+          lookLastX = touch.clientX;
+          lookLastY = touch.clientY;
+          updateLogic();
         }
       }
     }, { passive: false });
@@ -612,19 +555,23 @@
       joyMove = { x: dx / maxR, z: dy / maxR };
     }
 
-    function releaseJoy(e) {
+    function handleTouchEnd(e) {
       for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === joyTouchId) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === joyTouchId) {
           joyKnob.style.transform = 'translate(0px, 0px)';
           joyMove = { x: 0, z: 0 };
           joyTouchId = null;
         }
+        if (touch.identifier === lookTouchId) {
+          lookTouchId = null;
+        }
       }
     }
-    window.addEventListener('touchend', releaseJoy);
-    window.addEventListener('touchcancel', releaseJoy);
+    window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
 
-    // D. Nút bấm PTT (Hỗ trợ cả chuột lẫn cảm ứng)
+    // Nút PTT
     const btnPTT = document.getElementById('btn-ptt');
     function setPTTState(active) {
       if (active) {
@@ -636,23 +583,17 @@
         btnPTT.innerHTML = isTouchDevice ? "GIỮ ĐỂ<br>HỎI AI" : "GIỮ ĐỂ<br>HỎI AI<br><small>[Space]</small>";
       }
     }
-
     btnPTT.addEventListener('mousedown', () => setPTTState(true));
     window.addEventListener('mouseup', () => setPTTState(false));
     btnPTT.addEventListener('touchstart', (e) => { e.preventDefault(); setPTTState(true); });
     btnPTT.addEventListener('touchend', (e) => { e.preventDefault(); setPTTState(false); });
 
-    // Khởi động
     document.getElementById('btn-start').addEventListener('click', () => {
       document.getElementById('start-overlay').style.display = 'none';
       const silentAudio = new Audio();
       silentAudio.play().catch(() => {});
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
-      }
-      if (!isTouchDevice) {
-        container.requestPointerLock();
-      }
+      if ('speechSynthesis' in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+      if (!isTouchDevice) container.requestPointerLock();
       updateLogic();
     });
 
@@ -662,7 +603,6 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // --- 7. VÒNG LẶP RENDER (TỔNG HỢP CẢ 2 NGUỒN ĐIỀU KHIỂN) ---
     function animate() {
       requestAnimationFrame(animate);
 
@@ -672,19 +612,16 @@
       const right = new THREE.Vector3(Math.cos(yawRad), 0, Math.sin(yawRad));
       let moveDir = new THREE.Vector3();
 
-      // 1. Nhận lệnh từ bàn phím Laptop
       if (keys['KeyW'] || keys['ArrowUp']) moveDir.add(forward);
       if (keys['KeyS'] || keys['ArrowDown']) moveDir.sub(forward);
       if (keys['KeyD'] || keys['ArrowRight']) moveDir.add(right);
       if (keys['KeyA'] || keys['ArrowLeft']) moveDir.sub(right);
 
-      // 2. Nhận lệnh từ cần gạt điện thoại
       if (Math.abs(joyMove.x) > 0.05 || Math.abs(joyMove.z) > 0.05) {
         moveDir.addScaledVector(forward, -joyMove.z);
         moveDir.addScaledVector(right, joyMove.x);
       }
 
-      // Di chuyển nếu có bất kỳ nguồn nào tác động
       if (moveDir.lengthSq() > 0) {
         moveDir.normalize();
         posX = Math.max(-6, Math.min(6, posX + moveDir.x * speed));
