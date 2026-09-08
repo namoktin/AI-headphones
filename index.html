@@ -233,7 +233,7 @@
       Chạm nửa trái để di chuyển. Vuốt nửa phải để xoay góc nhìn xung quanh.
     </p>
     <p style="font-size: 12px; color: #facc15; margin-top: 10px;">
-      🔔 Nhớ bật chuông và tăng âm lượng điện thoại!
+        tăng âm lượng điện thoại!
     </p>
     <button class="btn-start" id="btn-start">▶ BẮT ĐẦU NGAY</button>
   </div>
@@ -252,7 +252,7 @@
     </div>
   </div>
 
-  <div class="touch-hint">👈 Nửa trái: Đi bộ | Nửa phải: Quay đầu 👉</div>
+  <div class="touch-hint"></div>
 
   <!-- CẦN GẠT JOYSTICK ẢO TỰ ĐỘNG HIỆN DƯỚI TAY TRÁI -->
   <div id="joystick-base">
@@ -370,7 +370,7 @@
 
     const artifacts = [
       { id: "POI_BIA_01", name: "Bia Tiến Sĩ Cổ Triều Lê", pos: new THREE.Vector3(0, 1.1, -2.8), mesh: tablet, audioSrc: "audio/bia_tien_si.mp3", audioText: "Bia Tiến Sĩ dựng năm 1484, ghi danh các bậc hiền tài đỗ đại khoa thời vua Lê Thánh Tông." },
-      { id: "POI_LU_HUONG", name: "Lư Hương Đồng Tam Khí", pos: new THREE.Vector3(-2.5, 0.6, -1.2), mesh: burner, audioSrc: "audio/luu_huong.mp3", audioText: "Lư hương đồng đúc thủ công tam khí thời Hậu Lê, khảm hoa văn lưỡng long chầu nguyệt tinh xảo." },
+      { id: "POI_LU_HUONG", name: "Lư Hương Đồng Tam Khí", pos: new THREE.Vector3(-2.5, 0.6, -1.2), mesh: burner, audioSrc: "audio/lu_huong.mp3", audioText: "Lư hương đồng đúc thủ công tam khí thời Hậu Lê, khảm hoa văn lưỡng long chầu nguyệt tinh xảo." },
       { id: "POI_HOANH_PHI", name: "Hoành Phi 'Vạn Thế Sư Biểu'", pos: new THREE.Vector3(0, 3.6, -3.2), mesh: plaque, audioSrc: "audio/hoanh_phi.mp3", audioText: "Bức hoành phi sơn son thếp vàng ca ngợi công đức người thầy tiêu biểu của muôn đời." }
     ];
     artifacts.forEach(a => { a.origColor = a.mesh.material.color.getHex(); });
